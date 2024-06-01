@@ -1,4 +1,6 @@
 import streamlit as st
+import pandas as pd
+import altair as alt
 
 def obtener_monto():
     return st.number_input("Ingrese el monto para el cual quiere realizar el plan de gastos mensual en bolivianos (Bs): ", min_value=0.0, step=0.01)
@@ -91,6 +93,11 @@ def main():
     resultados["ACTIVIDADES EXTRACURRICULARES"] = actividades
     resultados["DEUDAS"] = deudas
 
+    total_gastos_fijos = alquiler + deudas + actividades + ahorro
+    total_gastos_variable = sum([sum(v.values()) if isinstance(v, dict) else v for k, v in resultados.items() if k not in ["AHORRO", "ALQUILER", "ACTIVIDADES EXTRACURRICULARES", "DEUDAS"]])
+    total_gastos = total_gastos_fijos + total_gastos_variable
+    sobrante = monto - total_gastos
+
     st.write("## Este sería tu plan de gastos mensual:")
     for categoria, valor in resultados.items():
         if isinstance(valor, dict):
@@ -99,6 +106,30 @@ def main():
                 st.write(f"{subcategoria}: {subvalor:.2f} Bs")
         else:
             st.write(f"{categoria}: {valor:.2f} Bs")
+
+    st.write("## Resumen:")
+    st.write(f"**Total Gastos Fijos:** {total_gastos_fijos:.2f} Bs")
+    st.write(f"**Total Gastos Variables:** {total_gastos_variable:.2f} Bs")
+    st.write(f"**Total Gastos:** {total_gastos:.2f} Bs")
+    st.write(f"**Dinero Sobrante para Otros Gastos:** {sobrante:.2f} Bs")
+
+    # Crear un gráfico de distribución de gastos
+    categorias = list(resultados.keys())
+    valores = [sum(v.values()) if isinstance(v, dict) else v for v in resultados.values()]
+
+    df = pd.DataFrame({
+        'Categoria': categorias,
+        'Monto (Bs)': valores
+    })
+
+    chart = alt.Chart(df).mark_bar().encode(
+        x='Monto (Bs)',
+        y=alt.Y('Categoria', sort='-x')
+    ).properties(
+        title='Distribución de Gastos Mensuales'
+    )
+
+    st.altair_chart(chart, use_container_width=True)
 
 if __name__ == "__main__":
     main()
